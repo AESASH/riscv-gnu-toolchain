@@ -5086,9 +5086,11 @@ riscv_option_override (void)
 	   && OPTION_SET_P (riscv_stack_protector_guard_reg_str)))
     {
       error ("both %<-mstack-protector-guard-offset%> and "
-	     "%<-mstack-protector-guard-reg%> must be used "
-	     "with %<-mstack-protector-guard=sysreg%>");
+        error ("%qs is not a valid offset in %qs", str,
+               "-mstack-protector-guard-offset=");
     }
+
+  riscv_register_kaddv_pass ();
 
   if (OPTION_SET_P (riscv_stack_protector_guard_reg_str))
     {

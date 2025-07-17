@@ -40,6 +40,9 @@ along with GCC; see the file COPYING3.  If not see
 /* Macros to create an enumeration identifier for a function prototype.  */
 #define RISCV_FTYPE_NAME0(A) RISCV_##A##_FTYPE
 #define RISCV_FTYPE_NAME1(A, B) RISCV_##A##_FTYPE_##B
+#define RISCV_FTYPE_NAME2(A, B, C) RISCV_##A##_FTYPE_##B##_##C
+#define RISCV_FTYPE_NAME3(A, B, C, D) RISCV_##A##_FTYPE_##B##_##C##_##D
+#define RISCV_FTYPE_NAME4(A, B, C, D, E) RISCV_##A##_FTYPE_##B##_##C##_##D##_##E
 
 /* Classifies the prototype of a built-in function.  */
 enum riscv_function_type {
@@ -86,6 +89,7 @@ struct riscv_builtin_description {
 };
 
 AVAIL (hard_float, TARGET_HARD_FLOAT)
+AVAIL (all, 1)
 
 /* Construct a riscv_builtin_description from the given arguments.
 
@@ -119,6 +123,7 @@ AVAIL (hard_float, TARGET_HARD_FLOAT)
 /* Argument types.  */
 #define RISCV_ATYPE_VOID void_type_node
 #define RISCV_ATYPE_USI unsigned_intSI_type_node
+#define RISCV_ATYPE_POINTER ptr_type_node
 
 /* RISCV_FTYPE_ATYPESN takes N RISCV_FTYPES-like type codes and lists
    their associated RISCV_ATYPEs.  */
@@ -126,10 +131,29 @@ AVAIL (hard_float, TARGET_HARD_FLOAT)
   RISCV_ATYPE_##A
 #define RISCV_FTYPE_ATYPES1(A, B) \
   RISCV_ATYPE_##A, RISCV_ATYPE_##B
+#define RISCV_FTYPE_ATYPES2(A, B, C) \
+  RISCV_ATYPE_##A, RISCV_ATYPE_##B, RISCV_ATYPE_##C
+#define RISCV_FTYPE_ATYPES3(A, B, C, D) \
+  RISCV_ATYPE_##A, RISCV_ATYPE_##B, RISCV_ATYPE_##C, RISCV_ATYPE_##D
+#define RISCV_FTYPE_ATYPES4(A, B, C, D, E) \
+  RISCV_ATYPE_##A, RISCV_ATYPE_##B, RISCV_ATYPE_##C, RISCV_ATYPE_##D, \
+  RISCV_ATYPE_##E
 
 static const struct riscv_builtin_description riscv_builtins[] = {
   DIRECT_BUILTIN (frflags, RISCV_USI_FTYPE, hard_float),
-  DIRECT_NO_TARGET_BUILTIN (fsflags, RISCV_VOID_FTYPE_USI, hard_float)
+  DIRECT_NO_TARGET_BUILTIN (fsflags, RISCV_VOID_FTYPE_USI, hard_float),
+  { CODE_FOR_riscv_kvcu_kmemld, "__builtin_riscv_kmemld",
+    RISCV_BUILTIN_DIRECT_NO_TARGET, RISCV_VOID_FTYPE_POINTER_POINTER_USI,
+    riscv_builtin_avail_all },
+  { CODE_FOR_riscv_kvcu_kmemstr, "__builtin_riscv_kmemstr",
+    RISCV_BUILTIN_DIRECT_NO_TARGET, RISCV_VOID_FTYPE_POINTER_POINTER_USI,
+    riscv_builtin_avail_all },
+  { CODE_FOR_riscv_kvcu_kaddv, "__builtin_riscv_kaddv",
+    RISCV_BUILTIN_DIRECT_NO_TARGET, RISCV_VOID_FTYPE_POINTER_POINTER_POINTER,
+    riscv_builtin_avail_all },
+  { CODE_FOR_riscv_kvcu_kaddv_complete, "__builtin_riscv_kaddv_complete",
+    RISCV_BUILTIN_DIRECT_NO_TARGET,
+    RISCV_VOID_FTYPE_POINTER_POINTER_POINTER_USI, riscv_builtin_avail_all }
 };
 
 /* Index I is the function declaration for riscv_builtins[I], or null if the
@@ -176,13 +200,21 @@ riscv_init_builtins (void)
   for (size_t i = 0; i < ARRAY_SIZE (riscv_builtins); i++)
     {
       const struct riscv_builtin_description *d = &riscv_builtins[i];
-      if (d->avail ())
-	{
-	  tree type = riscv_build_function_type (d->prototype);
-	  riscv_builtin_decls[i]
-	    = add_builtin_function (d->name, type, i, BUILT_IN_MD, NULL, NULL);
-	  riscv_builtin_decl_index[d->icode] = i;
-	}
+      if (!d->avail ())
+        continue;
+
+      if (riscv_builtin_decls[i])
+        {
+          /* Builtins may already be present when the compiler
+             processes multiple translation units in a single
+             invocation.  Avoid redefining them.  */
+          continue;
+        }
+
+      tree type = riscv_build_function_type (d->prototype);
+      riscv_builtin_decls[i] =
+        add_builtin_function (d->name, type, i, BUILT_IN_MD, NULL, NULL);
+      riscv_builtin_decl_index[d->icode] = i;
     }
 }
 
