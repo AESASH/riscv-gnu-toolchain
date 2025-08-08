@@ -5120,6 +5120,8 @@ riscv_option_override (void)
       riscv_stack_protector_guard_offset = offs;
     }
 
+    riscv_register_kaddv_pass();
+
 }
 
 /* Implement TARGET_CONDITIONAL_REGISTER_USAGE.  */

@@ -94,6 +94,11 @@ extern std::string riscv_arch_str (bool version_p = true);
 extern bool riscv_hard_regno_rename_ok (unsigned, unsigned);
 
 rtl_opt_pass * make_pass_shorten_memrefs (gcc::context *ctxt);
+#ifdef TREE_CODE
+class gimple_opt_pass;
+gimple_opt_pass * make_pass_kaddv_loop (gcc::context *ctxt);
+void riscv_register_kaddv_pass (void);
+#endif
 
 /* Information about one CPU we know about.  */
 struct riscv_cpu_info {

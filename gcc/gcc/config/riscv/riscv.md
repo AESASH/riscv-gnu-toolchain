@@ -66,6 +66,13 @@
   UNSPECV_FENCE
   UNSPECV_FENCE_I
 
+  ;; Klessydra vector extensions.
+  UNSPECV_CSRW_MVSIZE
+  UNSPECV_KMEMLD
+  UNSPECV_KMEMSTR
+  UNSPECV_KADDV
+  UNSPECV_KADDV_COMPLETE
+
   ;; Stack Smash Protector
   UNSPEC_SSP_SET
   UNSPEC_SSP_TEST
@@ -2756,6 +2763,51 @@
    (unspec_volatile [(const_int 0)] UNSPECV_URET)]
   ""
   "uret")
+
+(define_insn "riscv_csrw_mvsize"
+  [(unspec_volatile [(match_operand:SI 0 "register_operand" "r")]
+                   UNSPECV_CSRW_MVSIZE)]
+  ""
+  "csrw\tMVSIZE,%0")
+
+(define_insn "riscv_kmemld"
+  [(unspec_volatile [(match_operand:SI 0 "register_operand" "=r")
+                    (match_operand:SI 1 "register_operand" "r")
+                    (match_operand:SI 2 "register_operand" "r")]
+                   UNSPECV_KMEMLD)]
+  ""
+  "kmemld\t%0,%1,%2")
+
+(define_insn "riscv_kmemstr"
+  [(unspec_volatile [(match_operand:SI 0 "register_operand" "=r")
+                    (match_operand:SI 1 "register_operand" "r")
+                    (match_operand:SI 2 "register_operand" "r")]
+                   UNSPECV_KMEMSTR)]
+  ""
+  "kmemstr\t%0,%1,%2")
+
+(define_insn "riscv_kaddv"
+  [(unspec_volatile [(match_operand:SI 0 "register_operand" "=r")
+                    (match_operand:SI 1 "register_operand" "r")
+                    (match_operand:SI 2 "register_operand" "r")]
+                   UNSPECV_KADDV)]
+  ""
+  "kaddv\t%0,%1,%2")
+
+(define_expand "riscv_kaddv_complete"
+  [(match_operand:SI 0 "register_operand")    ;; result pointer
+   (match_operand:SI 1 "register_operand")    ;; srcA pointer
+   (match_operand:SI 2 "register_operand")    ;; srcB pointer
+   (match_operand:SI 3 "register_operand")]  ;; size
+  ""
+  {
+    emit_insn (gen_riscv_kmemld (operands[1], operands[1], operands[3]));
+    emit_insn (gen_riscv_kmemld (operands[2], operands[2], operands[3]));
+    emit_insn (gen_riscv_csrw_mvsize (operands[3]));
+    emit_insn (gen_riscv_kaddv (operands[0], operands[1], operands[2]));
+    emit_insn (gen_riscv_kmemstr (operands[0], operands[0], operands[3]));
+    DONE;
+  })
 
 (define_insn "stack_tie<mode>"
   [(set (mem:BLK (scratch))
